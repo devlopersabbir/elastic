@@ -16,9 +16,11 @@ func main() {
 	cfg := config.LoadEnv()
 
 	config.ConnectDatabase(cfg)
+	elastic.ElasticClient(cfg)
 
 	r := gin.New()
 	r.Use(gin.Logger())
+	r.Use(corsMiddleware())
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -30,24 +32,15 @@ func main() {
 	{
 		todos := v1.Group("/todos")
 		{
-			todos.GET("", todoHandler.GetTodo)
 			todos.POST("", todoHandler.CreateTodo)
+			todos.GET("", todoHandler.ListTodos)
+			todos.GET("/search", todoHandler.SearchTodos)
+			// todos.POST("/seed", todoHandler.SeedTodos)
+			todos.GET("/:id", todoHandler.GetTodo)
+			todos.PUT("/:id", todoHandler.UpdateTodo)
+			todos.DELETE("/:id", todoHandler.DeleteTodo)
 		}
 	}
-
-	// v1 := r.Group("/api/v1")
-	// {
-	// 	todos := v1.Group("/todos")
-	// 	{
-	// 		todos.POST("", todoHandler.CreateTodo)
-	// 		todos.GET("", todoHandler.ListTodos)
-	// 		todos.GET("/search", todoHandler.SearchTodos) // ES-powered search
-	// 		todos.POST("/seed", todoHandler.SeedTodos)    // bulk seed for testing
-	// 		todos.GET("/:id", todoHandler.GetTodo)
-	// 		todos.PUT("/:id", todoHandler.UpdateTodo)
-	// 		todos.DELETE("/:id", todoHandler.DeleteTodo)
-	// 	}
-	// }
 
 	log.Printf("Server starting on port %s", cfg.ServerPort)
 	if err := r.Run(":" + cfg.ServerPort); err != nil {

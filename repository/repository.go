@@ -20,6 +20,10 @@ func (r *TodoRepository) Create(ctx context.Context, todo *models.Todo) error {
 	return r.db.WithContext(ctx).Create(todo).Error
 }
 
+func (r *TodoRepository) Update(ctx context.Context, todo *models.Todo) error {
+	return r.db.WithContext(ctx).Save(todo).Error
+}
+
 func (r *TodoRepository) GetByID(ctx context.Context, id uint) (*models.Todo, error) {
 	var todo models.Todo
 	err := r.db.WithContext(ctx).First(&todo, id).Error

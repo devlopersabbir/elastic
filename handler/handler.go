@@ -74,128 +74,132 @@ func (h *TodoHandler) GetTodo(c *gin.Context) {
 	c.JSON(http.StatusOK, todo)
 }
 
-// // UpdateTodo godoc
-// // PUT /todos/:id
-// func (h *TodoHandler) UpdateTodo(c *gin.Context) {
-// 	id, err := parseUintParam(c, "id")
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-// 		return
-// 	}
+// UpdateTodo godoc
+// PUT /todos/:id
+func (h *TodoHandler) UpdateTodo(c *gin.Context) {
+	id, err := parseUintParam(c, "id")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
 
-// 	var req models.UpdateTodoRequest
-// 	if err := c.ShouldBindJSON(&req); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
+	var req models.CreateTodoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-// 	todo, err := h.repo.Update(c.Request.Context(), id, &req)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update todo"})
-// 		return
-// 	}
+	todo, err := h.repo.GetByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "todo not found"})
+		return
+	}
 
-// 	// Re-index in Elasticsearch
-// 	go func() {
-// 		if err := h.es.IndexTodo(context.Background(), todo); err != nil {
-// 			_ = err
-// 		}
-// 	}()
+	todo.Title = req.Title
+	todo.Description = req.Description
+	todo.Status = req.Status
+	todo.Priority = req.Priority
+	todo.Tags = req.Tags
+	todo.DueDate = req.DueDate
 
-// 	c.JSON(http.StatusOK, todo)
-// }
+	if err := h.repo.Update(c.Request.Context(), todo); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update todo"})
+		return
+	}
 
-// // DeleteTodo godoc
-// // DELETE /todos/:id
-// func (h *TodoHandler) DeleteTodo(c *gin.Context) {
-// 	id, err := parseUintParam(c, "id")
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-// 		return
-// 	}
+	// Re-index in Elasticsearch
+	go elastic.IndexTodo(todo)
 
-// 	if err := h.repo.Delete(c.Request.Context(), id); err != nil {
-// 		c.JSON(http.StatusNotFound, gin.H{"error": "todo not found"})
-// 		return
-// 	}
+	c.JSON(http.StatusOK, todo)
+}
 
-// 	// Remove from Elasticsearch
-// 	go func() {
-// 		if err := h.es.DeleteTodo(context.Background(), id); err != nil {
-// 			_ = err
-// 		}
-// 	}()
+// DeleteTodo godoc
+// DELETE /todos/:id
+func (h *TodoHandler) DeleteTodo(c *gin.Context) {
+	id, err := parseUintParam(c, "id")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
 
-// 	c.JSON(http.StatusOK, gin.H{"message": "todo deleted successfully"})
-// }
+	if err := h.repo.Delete(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "todo not found"})
+		return
+	}
 
-// // ListTodos godoc
-// // GET /todos - simple paginated list without search
-// func (h *TodoHandler) ListTodos(c *gin.Context) {
-// 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-// 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	// Remove from Elasticsearch
+	go elastic.DeleteTodo(id)
 
-// 	if page < 1 {
-// 		page = 1
-// 	}
-// 	if pageSize < 1 || pageSize > 100 {
-// 		pageSize = 20
-// 	}
+	c.JSON(http.StatusOK, gin.H{"message": "todo deleted successfully"})
+}
 
-// 	todos, total, err := h.repo.GetAll(c.Request.Context(), page, pageSize)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list todos"})
-// 		return
-// 	}
+// ListTodos godoc
+// GET /todos - simple paginated list without search
+func (h *TodoHandler) ListTodos(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
 
-// 	c.JSON(http.StatusOK, models.SearchResponse{
-// 		Total:    total,
-// 		Page:     page,
-// 		PageSize: pageSize,
-// 		Todos:    todos,
-// 	})
-// }
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
 
-// // SearchTodos godoc
-// // GET /todos/search - full-text search via Elasticsearch
-// func (h *TodoHandler) SearchTodos(c *gin.Context) {
-// 	var req models.SearchRequest
-// 	if err := c.ShouldBindQuery(&req); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
+	todos, total, err := h.repo.GetAll(c.Request.Context(), page, pageSize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list todos"})
+		return
+	}
 
-// 	if req.Page < 1 {
-// 		req.Page = 1
-// 	}
-// 	if req.PageSize < 1 || req.PageSize > 100 {
-// 		req.PageSize = 20
-// 	}
+	c.JSON(http.StatusOK, models.SearchResponse{
+		Total:    total,
+		Page:     page,
+		Pagesize: pageSize,
+		Todos:    todos,
+	})
+}
 
-// 	// Search in Elasticsearch to get IDs
-// 	ids, total, err := h.es.Search(c.Request.Context(), &req)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
-// 		return
-// 	}
+// SearchTodos godoc
+// GET /todos/search - full-text search via Elasticsearch
+func (h *TodoHandler) SearchTodos(c *gin.Context) {
+	var req models.SearchTodoRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-// 	// Fetch full documents from PostgreSQL in the same order
-// 	todos, err := h.repo.GetByIDs(c.Request.Context(), ids)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch results"})
-// 		return
-// 	}
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.PageSize < 1 || req.PageSize > 100 {
+		req.PageSize = 20
+	}
 
-// 	c.JSON(http.StatusOK, models.SearchResponse{
-// 		Total:    total,
-// 		Page:     req.Page,
-// 		PageSize: req.PageSize,
-// 		Todos:    todos,
-// 	})
-// }
+	// Search in Elasticsearch to get IDs
+	ids, total, err := elastic.Search(c.Request.Context(), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
+		return
+	}
 
-// // SeedTodos godoc
-// // POST /todos/seed - generate N sample todos for testing at scale
+	// Fetch full documents from PostgreSQL in the same order
+	todos, err := h.repo.GetByIDs(c.Request.Context(), ids)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch results"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.SearchResponse{
+		Total:    total,
+		Page:     req.Page,
+		Pagesize: req.PageSize,
+		Todos:    todos,
+	})
+}
+
+// SeedTodos godoc
+// POST /todos/seed - generate N sample todos for testing at scale
 // func (h *TodoHandler) SeedTodos(c *gin.Context) {
 // 	var body struct {
 // 		Count int `json:"count" binding:"required,min=1,max=100000"`
@@ -205,9 +209,7 @@ func (h *TodoHandler) GetTodo(c *gin.Context) {
 // 		return
 // 	}
 
-// 	go func() {
-// 		generateAndIndexTodos(h, body.Count)
-// 	}()
+// 	go generateAndIndexTodos(h, body.Count)
 
 // 	c.JSON(http.StatusAccepted, gin.H{
 // 		"message": "Seeding started in background",
@@ -255,7 +257,7 @@ func (h *TodoHandler) GetTodo(c *gin.Context) {
 // 			return
 // 		}
 
-// 		if err := h.es.BulkIndex(context.Background(), savedTodos); err != nil {
+// 		if err := elastic.BulkIndex(savedTodos); err != nil {
 // 			return
 // 		}
 // 	}
