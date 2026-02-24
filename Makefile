@@ -1,2 +1,4 @@
 dev-air:
-	go run github.com/air-verse/air@latest
+	air
+docker-dev:
+	docker compose --profile dev up -d

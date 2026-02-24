@@ -9,7 +9,7 @@ import (
 
 var EsClient *elasticsearch.Client
 
-func ElasticClient (cfg *config.Config) {
+func ElasticClient(cfg *config.Config) {
 	es, err := elasticsearch.NewClient(elasticsearch.Config{
 		Addresses: []string{cfg.ElasticsearchUrl},
 	})
@@ -17,5 +17,19 @@ func ElasticClient (cfg *config.Config) {
 		log.Fatalf("failed to connect to elasticsearch: %v", err)
 	}
 
-	EsClient = es 
+	// create index
+	CreateTodoIndex(es)
+	EsClient = es
+}
+
+func CreateTodoIndex(es *elasticsearch.Client) {
+	res, err := es.Indices.Create("todos")
+	if err != nil {
+		log.Fatalf("failed creating index: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		log.Println("index may already exist:", res.String())
+	}
 }

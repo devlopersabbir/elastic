@@ -31,12 +31,12 @@ services:
       - postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: tododb
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -50,7 +50,7 @@ services:
     profiles:
       - dev
       - prod
-      - elasticsearch
+      - elastic
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -72,23 +72,8 @@ services:
     networks:
       - todo
 
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.14.0
-    profiles:
-      - kabana
-      - dev
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    ports:
-      - "5601:5601"
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    networks:
-      - todo
-
 volumes:
-  postgres_data:
+  pg_data:
   es_data:
 
 networks:

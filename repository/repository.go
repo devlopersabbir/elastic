@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/devloeprsabbir/go-elasticsearch/models"
 	"gorm.io/gorm"
 )
 
@@ -50,39 +51,6 @@ func (r *TodoRepository) GetByIDs(ctx context.Context, ids []uint) ([]models.Tod
 		}
 	}
 	return ordered, nil
-}
-
-func (r *TodoRepository) Update(ctx context.Context, id uint, req *models.UpdateTodoRequest) (*models.Todo, error) {
-	var todo models.Todo
-	if err := r.db.WithContext(ctx).First(&todo, id).Error; err != nil {
-		return nil, err
-	}
-
-	updates := map[string]interface{}{}
-	if req.Title != "" {
-		updates["title"] = req.Title
-	}
-	if req.Description != "" {
-		updates["description"] = req.Description
-	}
-	if req.Status != "" {
-		updates["status"] = req.Status
-	}
-	if req.Priority != "" {
-		updates["priority"] = req.Priority
-	}
-	if req.Tags != "" {
-		updates["tags"] = req.Tags
-	}
-	if req.DueDate != nil {
-		updates["due_date"] = req.DueDate
-	}
-
-	if err := r.db.WithContext(ctx).Model(&todo).Updates(updates).Error; err != nil {
-		return nil, err
-	}
-
-	return &todo, nil
 }
 
 func (r *TodoRepository) Delete(ctx context.Context, id uint) error {
