@@ -32,13 +32,7 @@ func main() {
 	{
 		todos := v1.Group("/todos")
 		{
-			todos.POST("", todoHandler.CreateTodo)
-			todos.GET("", todoHandler.ListTodos)
 			todos.GET("/search", todoHandler.SearchTodos)
-			// todos.POST("/seed", todoHandler.SeedTodos)
-			todos.GET("/:id", todoHandler.GetTodo)
-			todos.PUT("/:id", todoHandler.UpdateTodo)
-			todos.DELETE("/:id", todoHandler.DeleteTodo)
 		}
 	}
 
