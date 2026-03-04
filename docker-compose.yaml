@@ -45,7 +45,7 @@ services:
     networks:
       - todo
 
-  elasticsearch:
+  elasticsearch1:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.14.0
     profiles:
       - dev

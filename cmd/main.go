@@ -15,28 +15,45 @@ func main() {
 	_ = godotenv.Load()
 	cfg := config.LoadEnv()
 
+	// Connect to PostgreSQL (Azure)
 	config.ConnectDatabase(cfg)
+
+	// Connect to Elasticsearch & create index
 	elastic.ElasticClient(cfg)
 
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(corsMiddleware())
 
+	// Health check
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	todoRepo := repository.NewTodoRepository(config.DB)
-	todoHandler := handler.NewTodoHandler(todoRepo, elastic.EsClient)
+	// ---------- Vehicle Routes ----------
+	vehicleRepo := repository.NewVehicleRepository(config.DB)
+	vehicleHandler := handler.NewVehicleHandler(vehicleRepo, elastic.EsClient)
+
 	v1 := r.Group("/api/v1")
 	{
-		todos := v1.Group("/todos")
+		vehicles := v1.Group("/vehicles")
 		{
-			todos.GET("/search", todoHandler.SearchTodos)
+			// POST /api/v1/vehicles/search
+			// Body: { "listing_url": "...", "page": 1, "page_size": 15 }
+			// Returns: top 10–15 most similar vehicles from Elasticsearch
+			vehicles.POST("/search", vehicleHandler.SearchVehicles)
+
+			// POST /api/v1/vehicles/index
+			// Triggers async bulk-indexing of all vehicles from PG → Elasticsearch
+			vehicles.POST("/index", vehicleHandler.TriggerIndexing)
+
+			// GET /api/v1/vehicles/status
+			// Returns PG count vs ES indexed count
+			vehicles.GET("/status", vehicleHandler.GetVehicleStatus)
 		}
 	}
 
-	log.Printf("Server starting on port %s", cfg.ServerPort)
+	log.Printf("Vehicle Search Server starting on port %s", cfg.ServerPort)
 	if err := r.Run(":" + cfg.ServerPort); err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}
