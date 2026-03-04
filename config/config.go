@@ -12,15 +12,15 @@ func LoadEnv() *Config {
 		sslMode = "require" // Azure PG always requires SSL
 	}
 	return &Config{
-		DBHost:            os.Getenv("DB_HOST"),
-		DBPort:            os.Getenv("DB_PORT"),
-		DBUser:            os.Getenv("DB_USER"),
-		DBPass:            os.Getenv("DB_PASS"),
-		DBName:            os.Getenv("DB_NAME"),
+		DBHost:            GetEnv("DB_HOST", "carma.postgres.database.azure.com"),
+		DBPort:            GetEnv("DB_PORT", "5432"),
+		DBUser:            GetEnv("DB_USER", "carmaadmin"),
+		DBPass:            GetEnv("DB_PASS", "Hosthunter1221!."),
+		DBName:            GetEnv("DB_NAME", "postgres"),
 		DBSSLMode:         sslMode,
-		ElasticsearchUrl:  os.Getenv("ELASTICSEARCH_URL"),
-		ElasticsearchUrls: os.Getenv("ELASTICSEARCH_URLS"), // optional extra nodes
-		ServerPort:        os.Getenv("SERVER_PORT"),
+		ElasticsearchUrl:  GetEnv("ELASTICSEARCH_URL", "http://localhost:9200"),
+		ElasticsearchUrls: GetEnv("ELASTICSEARCH_URLS", "http://localhost:9200"), // optional extra nodes
+		ServerPort:        GetEnv("SERVER_PORT", "8080"),
 	}
 }
 
